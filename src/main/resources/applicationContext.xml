@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+       ">
+
+
+    <bean id="jms" class="org.apache.camel.component.jms.JmsComponent">
+        <property name="configuration" ref="jmsConfig"/>
+    </bean>
+
+    <bean id="jmsConfig" class="org.apache.camel.component.jms.JmsConfiguration">
+        <property name="connectionFactory" ref="jmsPooledConnectionFactory"/>
+        <property name="transacted" value="true"/>
+        <property name="transactionManager" ref="jmsTransactionManager" />
+        <!--<property name="transactionManager" ref="chainedTransactionManager"/>-->
+        <!-- Using the Chained-->
+        <property name="cacheLevelName" value="CACHE_CONSUMER"/>
+    </bean>
+
+    <bean id="jmsTransactionManager" class="org.springframework.jms.connection.JmsTransactionManager">
+        <property name="connectionFactory" ref="jmsPooledConnectionFactory"/>
+        <property name="defaultTimeout" value="30"/>
+    </bean>
+
+    <bean id="jmsPooledConnectionFactory" class="org.apache.activemq.pool.PooledConnectionFactory" init-method="start"
+          destroy-method="stop">
+        <property name="maxConnections" value="2"/>
+        <property name="connectionFactory">
+            <bean id="jmsConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+                 	    <property name="brokerURL" value="tcp://localhost:61616" />
+                <!--<property name="brokerURL" value="${spring.activemq.broker-url}"/>                -->
+                <!-- property name="userName" value="smix" />
+                <property name="password" value="smix" /-->
+                <property name="redeliveryPolicy">
+                    <bean class="org.apache.activemq.RedeliveryPolicy">
+                        <property name="maximumRedeliveries" value="-1"/>
+                        <property name="initialRedeliveryDelay" value="2000"/>
+                        <property name="redeliveryDelay" value="60000"/>
+                        <property name="useExponentialBackOff" value="false"/>
+                    </bean>
+                </property>
+                <!-- property name="persistenceAdapter"/-->
+            </bean>
+        </property>
+    </bean>
+
+
+
+
+    <camelContext xmlns="http://camel.apache.org/schema/spring">
+    </camelContext>
+
+    <bean id="mainCamel" class="msv.tst.MainCamel"/>
+
+</beans>
