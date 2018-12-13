@@ -54,6 +54,6 @@
     <camelContext xmlns="http://camel.apache.org/schema/spring">
     </camelContext>
 
-    <bean id="mainCamel" class="msv.tst.MainCamel"/>
+    <bean id="mainRouteBuilder" class="msv.tst.MainRouteBuilder"/>
 
 </beans>
