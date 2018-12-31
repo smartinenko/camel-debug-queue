@@ -1,47 +1,43 @@
 package msv.tst;
 
 import org.apache.camel.builder.RouteBuilder;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.core.env.Environment;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-import static java.util.Objects.isNull;
-import static msv.tst.MainCamel.MCP_SYSTEM_HEADER;
-import static msv.tst.MainCamel.TOPIC;
+import static msv.tst.TradeRefNumberSelector.MCP_SYSTEM_HEADER;
 
-public class MainRouteBuilder extends RouteBuilder implements ApplicationContextAware {
+@Component
+public class MainRouteBuilder extends RouteBuilder {
+    public static final String TOPIC = "activemq:topic:Consumer.VirtualTopic.1111";
 
-    private ApplicationContext appContext;
+    @Autowired
+    private TradeRefNumberSelector tradeRefNumberSelector;
 
     @Override
     public void configure() throws Exception {
 
-        Environment environment= appContext.getEnvironment();
-        final String JMS_DEBUG_SELECTOR = environment.getProperty("JMS_DEBUG_SELECTOR");
-        final String SELECTOR = isNull(JMS_DEBUG_SELECTOR) ? "" : JMS_DEBUG_SELECTOR;
+        final String SELECTOR = tradeRefNumberSelector.exclude(true);
+        //activemq:topic:topic.name?selector=MCP_SYSTEM_HEADER NOT LIKE '%tradeRefNbr":"JM001%'
 
         from(TOPIC + SELECTOR)
-                .routeId("dev-route")
+                .routeId("server-route")
                 .process(e ->
                     System.out.println(e.getFromRouteId() +
-                            " HEADER= " + e.getIn().getHeader(MCP_SYSTEM_HEADER) +
+//                            " HEADER= " + e.getIn().getHeader(MCP_SYSTEM_HEADER) +
                             " body= " + e.getIn().getBody())
                 )
                 .end();
 
-        from(TOPIC + "?selector=MCP_SYSTEM_HEADER LIKE '%tradeRefNbr\":\"JM001%'")
-                .routeId("debug-route")
+        final String SELECTOR2 = tradeRefNumberSelector.include(true);
+// activemq:topic:topic.name?selector=MCP_SYSTEM_HEADER LIKE '%tradeRefNbr":"JM001%' OR MCP_SYSTEM_HEADER LIKE '%tradeRefNbr":"DEV%'
+        from(TOPIC + SELECTOR2)
+//        from(TOPIC + "?selector=MCP_SYSTEM_HEADER LIKE '%tradeRefNbr\":\"JM001%'")
+                .routeId("host-route")
                 .process(e ->
                     System.out.println(e.getFromRouteId() +
-                            " HEADER= " + e.getIn().getHeader(MCP_SYSTEM_HEADER) +
+//                            " HEADER= " + e.getIn().getHeader(MCP_SYSTEM_HEADER) +
                             " body= " + e.getIn().getBody())
                 )
                 .end();
-    }
-
-    @Override
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        this.appContext = applicationContext;
     }
 }
