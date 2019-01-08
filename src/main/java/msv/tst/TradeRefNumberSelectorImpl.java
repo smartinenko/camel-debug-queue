@@ -1,72 +1,72 @@
 package msv.tst;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.isNull;
+import static org.apache.commons.lang.StringUtils.EMPTY;
 
 @Component
-public class TradeRefNumberSelectorImpl implements TradeRefNumberSelector, ApplicationContextAware {
+@Slf4j
+public class TradeRefNumberSelectorImpl implements TradeRefNumberSelector {
 
-    private ApplicationContext appContext;
-
-    @Override
-    public String include(boolean isFirstOption) {
-        Environment environment= appContext.getEnvironment();
-        final String JMS_DEBUG_SELECTOR = environment.getProperty(JMS_TRADE_REF_NBR_INCLUDE);
-        if (isNull(JMS_DEBUG_SELECTOR)) {
-            return "";
-        }
-
-        final String PREFIX = isFirstOption ? "?" : "&";
-        final String likeStatement = buildLikeStatement(JMS_DEBUG_SELECTOR);
-        return StringUtils.isBlank(likeStatement) ? "" : PREFIX + "selector=" + likeStatement;
-    }
+    static final String PROPERTY_DEV_PREFIX_DELIMITER = ";";
+    static final String MCP_SYSTEM_HEADER = "MCP_SYSTEM_HEADER";
+    static final String JMS_TRADE_REF_NBR_PREFIX = "JMS_TRADE_REF_NBR_PREFIX";
 
     @Override
-    public String exclude(boolean isFirstOption) {
-        Environment environment= appContext.getEnvironment();
-        final String JMS_DEBUG_SELECTOR = environment.getProperty(JMS_TRADE_REF_NBR_EXCLUDE);
-        if (isNull(JMS_DEBUG_SELECTOR)) {
-            return "";
+    public String includeTradePrefix(boolean isFirstOption) {
+        String prefixValue = System.getenv(JMS_TRADE_REF_NBR_PREFIX);
+        if (isNull(prefixValue)) {
+            log.info("Environment variable JMS_TRADE_REF_NBR_PREFIX is not set, no JMSSelector generated");
+            return EMPTY;
         }
 
-        final String PREFIX = isFirstOption ? "?" : "&";
-        final String notLikeStatement = buildNotLikeStatement(JMS_DEBUG_SELECTOR);
-        return StringUtils.isBlank(notLikeStatement) ? "" : PREFIX + "selector=" + notLikeStatement;
+        String parameterDelimiter = isFirstOption ? "?" : "&";
+        String likeStatement = buildLikeStatement(prefixValue);
+        if (StringUtils.isBlank(likeStatement)) {
+            log.info("LikeStatement is empty, no JMSSelector generated");
+            return EMPTY;
+        }
+        String jmsSelector = parameterDelimiter + "selector=" + likeStatement;
+        log.info("JmsSelector generated: {}", jmsSelector);
+        return jmsSelector;
     }
 
-    public static void main(String[] args) {
-        TradeRefNumberSelectorImpl t = new TradeRefNumberSelectorImpl();
-        System.out.println("=" + t.buildLikeStatement("MSV;JUL"));
-        System.out.println("=<" + t.buildLikeStatement("") + ">");
+    @Override
+    public String excludeTradePrefix(boolean isFirstOption) {
+        String prefixValue = System.getenv(JMS_TRADE_REF_NBR_PREFIX);
+        if (isNull(prefixValue)) {
+            log.info("Environment variable JMS_TRADE_REF_NBR_PREFIX is not set, no JMSSelector generated");
+            return EMPTY;
+        }
 
-        System.out.println("=" + t.buildNotLikeStatement("MSV;JUL"));
-        System.out.println("=<" + t.buildNotLikeStatement("") + ">");
+        String parameterDelimiter = isFirstOption ? "?" : "&";
+        String notLikeStatement = buildNotLikeStatement(prefixValue);
+        if (StringUtils.isBlank(notLikeStatement)) {
+            log.info("NotLikeStatement is empty, no JMSSelector generated");
+            return EMPTY;
+        }
+        String jmsSelector = parameterDelimiter + "selector=" + notLikeStatement;
+        log.info("JmsSelector generated: {}", jmsSelector);
+        return jmsSelector;
     }
 
-    protected String buildLikeStatement(final String envProperty) {
+    private String buildLikeStatement(final String envProperty) {
         return Arrays.stream(envProperty.split(PROPERTY_DEV_PREFIX_DELIMITER))
                 .filter(StringUtils::isNotBlank)
                 .map(s -> MCP_SYSTEM_HEADER + " LIKE '%tradeRefNbr\":\"" + s + "%'")
                 .collect(Collectors.joining(" OR "));
     }
 
-    protected String buildNotLikeStatement(final String envProperty) {
+    private String buildNotLikeStatement(final String envProperty) {
         return Arrays.stream(envProperty.split(PROPERTY_DEV_PREFIX_DELIMITER))
                 .filter(StringUtils::isNotBlank)
                 .map(s -> MCP_SYSTEM_HEADER + " NOT LIKE '%tradeRefNbr\":\"" + s + "%'")
                 .collect(Collectors.joining(" AND "));
-    }
-
-    @Override
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        this.appContext = applicationContext;
     }
 }

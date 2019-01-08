@@ -1,4 +1,4 @@
-package msv.tst;
+package msv.tst.util;
 
 import org.apache.camel.component.jms.JmsComponent;
 import org.apache.camel.spring.SpringCamelContext;
@@ -16,8 +16,6 @@ public class ContextManager {
 
         JmsComponent jms = (JmsComponent)appContext.getBean("jms");
         camelContext.addComponent("activemq", jms);
-//        MainRouteBuilder mainRouteBuilder = (MainRouteBuilder)appContext.getBean("mainRouteBuilder");
-//        camelContext.addRoutes(mainRouteBuilder);
     }
 
     public void stop() {
@@ -28,10 +26,6 @@ public class ContextManager {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    public ClassPathXmlApplicationContext getAppContext() {
-        return appContext;
     }
 
     public SpringCamelContext getCamelContext() {

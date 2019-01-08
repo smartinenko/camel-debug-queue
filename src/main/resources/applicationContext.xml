@@ -3,14 +3,12 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:context="http://www.springframework.org/schema/context"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="
-        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
-        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
         http://www.springframework.org/schema/context
-        http://www.springframework.org/schema/context/spring-context-2.5.xsd
-       ">
+        http://www.springframework.org/schema/context/spring-context-2.5.xsd">
 
-    <context:component-scan base-package="msv.tst" />
+    <context:component-scan base-package="msv.tst"/>
 
     <bean id="jms" class="org.apache.camel.component.jms.JmsComponent">
         <property name="configuration" ref="jmsConfig"/>
@@ -19,9 +17,7 @@
     <bean id="jmsConfig" class="org.apache.camel.component.jms.JmsConfiguration">
         <property name="connectionFactory" ref="jmsPooledConnectionFactory"/>
         <property name="transacted" value="true"/>
-        <property name="transactionManager" ref="jmsTransactionManager" />
-        <!--<property name="transactionManager" ref="chainedTransactionManager"/>-->
-        <!-- Using the Chained-->
+        <property name="transactionManager" ref="jmsTransactionManager"/>
         <property name="cacheLevelName" value="CACHE_CONSUMER"/>
     </bean>
 
@@ -34,8 +30,8 @@
           destroy-method="stop">
         <property name="maxConnections" value="2"/>
         <property name="connectionFactory">
-            <bean id="jmsConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
-                 	    <property name="brokerURL" value="tcp://localhost:61616" />
+            <bean class="org.apache.activemq.ActiveMQConnectionFactory">
+                <property name="brokerURL" value="tcp://localhost:61616"/>
                 <!--<property name="brokerURL" value="${spring.activemq.broker-url}"/>                -->
                 <!-- property name="userName" value="smix" />
                 <property name="password" value="smix" /-->
@@ -47,14 +43,8 @@
                         <property name="useExponentialBackOff" value="false"/>
                     </bean>
                 </property>
-                <!-- property name="persistenceAdapter"/-->
             </bean>
         </property>
     </bean>
-
-
-
-
-    <camelContext xmlns="http://camel.apache.org/schema/spring" />
 
 </beans>
