@@ -7,7 +7,8 @@ import org.apache.camel.Endpoint;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.spring.SpringCamelContext;
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,157 +41,173 @@ public class TradeRefNumberSelectorTest {
 
     @Autowired
     private TradeRefNumberSelector tradeRefNumberSelector;
-    private SpringCamelContext camelContext;
-    private ContextManager manager = new ContextManager();
-    private ProducerTemplate producerTemplate;
+    private static SpringCamelContext camelContext;
+    private static ContextManager manager = new ContextManager();
+    private static ProducerTemplate producerTemplate;
     private Map<String, String> envVariables = new HashMap<>();
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeClass
+    public static void setUp() throws Exception {
         manager.start();
         camelContext = manager.getCamelContext();
         producerTemplate = camelContext.createProducerTemplate();
     }
 
     @After
-    public void shutDown() throws Exception {
-        manager.stop();
+    public void clearEnvVariable() throws Exception {
         removeEnvVariable(JMS_TRADE_REF_NBR_PREFIX);
     }
 
+    @AfterClass
+    public static void shutDown() {
+        manager.stop();
+    }
+
     @Test
-    public void testServerSideExcludeSingleTrade() throws Exception {
+    public void testServerSideExcludeSingleTradePrefix() throws Exception {
+        setEnvVariable(LOCAL_PREFIX);
+        String serverSideSelector = tradeRefNumberSelector.serverSide(true);
+        String uri = TOPIC + serverSideSelector;
+        Endpoint serverSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger serverMessagesCount = new AtomicInteger(0);
-        envVariables.put(JMS_TRADE_REF_NBR_PREFIX, LOCAL_PREFIX);
-        setEnv(envVariables);
-        String excludeSelector = tradeRefNumberSelector.excludeTradePrefix(true);
-        Endpoint serverSideEndpoint = camelContext.getEndpoint(TOPIC + excludeSelector);
         Consumer serverSideConsumer = serverSideEndpoint.createConsumer(exchange -> {
             log.info("server_host = {}", exchange.getIn().getBody(String.class));
             serverMessagesCount.addAndGet(1);
         });
         serverSideConsumer.start();
-
-        sendServerAndLocalMessages();
-        Thread.sleep(10);
-        serverSideConsumer.stop();
-
+        sendServerMessages(10);
+        sendLocalMessages(5);
+        Thread.sleep(200);
         assertEquals(NUMBER_OF_SERVER_MESSAGES, serverMessagesCount.get());
+
+        serverSideConsumer.stop();
     }
 
     @Test
     public void testLocalSideIncludeSingleTrade() throws Exception {
+        setEnvVariable(LOCAL_PREFIX);
+        String developerSideSelector = tradeRefNumberSelector.developerSide(true);
+        String uri = TOPIC + developerSideSelector;
+        Endpoint localSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger localMessagesCount = new AtomicInteger(0);
-        Map<String, String> envVariable = new HashMap<>();
-        envVariable.put(JMS_TRADE_REF_NBR_PREFIX, LOCAL_PREFIX);
-        setEnv(envVariable);
-        String includeSelector = tradeRefNumberSelector.includeTradePrefix(true);
-        Endpoint localSideEndpoint = camelContext.getEndpoint(TOPIC + includeSelector);
         Consumer localSideConsumer = localSideEndpoint.createConsumer(exchange -> {
             log.info("local_host = {}", exchange.getIn().getBody(String.class));
             localMessagesCount.addAndGet(1);
         });
         localSideConsumer.start();
 
-        sendServerAndLocalMessages();
-        Thread.sleep(10);
-        localSideConsumer.stop();
-
+        sendServerMessages(10);
+        sendLocalMessages(5);
+        Thread.sleep(200);
         assertEquals(NUMBER_OF_LOCAL_MESSAGES, localMessagesCount.get());
+
+        localSideConsumer.stop();
     }
 
     @Test
     public void testServerSideExcludeMultipleTrade() throws Exception {
+        setEnvVariable(LOCAL_PREFIX + PROPERTY_DEV_PREFIX_DELIMITER + LOCAL2_PREFIX);
+        String serverSideSelector = tradeRefNumberSelector.serverSide(true);
+        String uri = TOPIC + serverSideSelector;
+        Endpoint serverSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger serverMessagesCount = new AtomicInteger(0);
-        Map<String, String> envVariable = new HashMap<>();
-        envVariable.put(JMS_TRADE_REF_NBR_PREFIX, LOCAL_PREFIX + PROPERTY_DEV_PREFIX_DELIMITER + LOCAL2_PREFIX);
-        setEnv(envVariable);
-        String excludeSelector = tradeRefNumberSelector.excludeTradePrefix(true);
-        Endpoint serverSideEndpoint = camelContext.getEndpoint(TOPIC + excludeSelector);
         Consumer serverSideConsumer = serverSideEndpoint.createConsumer(exchange -> {
             log.info("server_host = {}", exchange.getIn().getBody(String.class));
             serverMessagesCount.addAndGet(1);
         });
         serverSideConsumer.start();
 
-        sendServerAndLocalMessages();
-        sendLocalMessages();
-        Thread.sleep(10);
-        serverSideConsumer.stop();
-
+        sendServerMessages(10);
+        sendLocalMessages(5);
+        sendLocalMessagesSecondPart(5);
+        Thread.sleep(200);
         assertEquals(NUMBER_OF_SERVER_MESSAGES, serverMessagesCount.get());
+
+        serverSideConsumer.stop();
     }
 
     @Test
     public void testLocalSideIncludeMultipleTrade() throws Exception {
+        setEnvVariable(LOCAL_PREFIX + PROPERTY_DEV_PREFIX_DELIMITER + LOCAL2_PREFIX);
+        String developerSideSelector = tradeRefNumberSelector.developerSide(true);
+        String uri = TOPIC + developerSideSelector;
+        Endpoint localSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger localMessagesCount = new AtomicInteger(0);
-        Map<String, String> envVariable = new HashMap<>();
-        envVariable.put(JMS_TRADE_REF_NBR_PREFIX, LOCAL_PREFIX + PROPERTY_DEV_PREFIX_DELIMITER + LOCAL2_PREFIX);
-        setEnv(envVariable);
-        String includeSelector = tradeRefNumberSelector.includeTradePrefix(true);
-        Endpoint localSideEndpoint = camelContext.getEndpoint(TOPIC + includeSelector);
         Consumer localSideConsumer = localSideEndpoint.createConsumer(exchange -> {
             log.info("local_host = {}", exchange.getIn().getBody(String.class));
             localMessagesCount.addAndGet(1);
         });
         localSideConsumer.start();
 
-        sendServerAndLocalMessages();
-        sendLocalMessages();
-        Thread.sleep(10);
-        localSideConsumer.stop();
-
+        sendServerMessages(10);
+        sendLocalMessages(5);
+        sendLocalMessagesSecondPart(5);
+        Thread.sleep(200);
         assertEquals(NUMBER_OF_LOCAL_MESSAGES_MULTIPLE_CHECK, localMessagesCount.get());
+
+        localSideConsumer.stop();
     }
 
     @Test
     public void testServerSideExcludeEmptyVariable() throws Exception {
+        String serverSideSelector = tradeRefNumberSelector.serverSide(true);
+        String uri = TOPIC + serverSideSelector;
+        Endpoint serverSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger serverMessagesCount = new AtomicInteger(0);
-        String excludeSelector = tradeRefNumberSelector.excludeTradePrefix(true);
-        Endpoint serverSideEndpoint = camelContext.getEndpoint(TOPIC + excludeSelector);
         Consumer serverSideConsumer = serverSideEndpoint.createConsumer(exchange -> {
             log.info("server_host = {}", exchange.getIn().getBody(String.class));
             serverMessagesCount.addAndGet(1);
         });
         serverSideConsumer.start();
 
-        sendServerAndLocalMessages();
-        Thread.sleep(10);
-        serverSideConsumer.stop();
-
+        sendServerMessages(10);
+        sendLocalMessages(5);
+        Thread.sleep(200);
         assertEquals(NUMBER_OF_SERVER_MESSAGES + NUMBER_OF_LOCAL_MESSAGES, serverMessagesCount.get());
+
+        serverSideConsumer.stop();
     }
 
     @Test
     public void testLocalSideIncludeEmptyVariable() throws Exception {
+        String developerSideSelector = tradeRefNumberSelector.developerSide(true);
+        String uri = TOPIC + developerSideSelector;
+        Endpoint localSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger localMessagesCount = new AtomicInteger(0);
-        String includeSelector = tradeRefNumberSelector.includeTradePrefix(true);
-        Endpoint localSideEndpoint = camelContext.getEndpoint(TOPIC + includeSelector);
         Consumer localSideConsumer = localSideEndpoint.createConsumer(exchange -> {
             log.info("local_host = {}", exchange.getIn().getBody(String.class));
             localMessagesCount.addAndGet(1);
         });
         localSideConsumer.start();
 
-        sendServerAndLocalMessages();
-        Thread.sleep(10);
-        localSideConsumer.stop();
-
+        sendServerMessages(10);
+        sendLocalMessages(5);
+        Thread.sleep(200);
         assertEquals(NUMBER_OF_SERVER_MESSAGES + NUMBER_OF_LOCAL_MESSAGES, localMessagesCount.get());
+
+        localSideConsumer.stop();
     }
 
-    private void sendLocalMessages() {
-        for (int i = 0; i < NUMBER_OF_LOCAL_MESSAGES; i++) {
-            producerTemplate.sendBodyAndHeader(TOPIC, LOCAL2_PREFIX, MCP_SYSTEM_HEADER, LOCAL2_SYSTEM_HEADER);
-        }
+    private void setEnvVariable(String prefix) throws Exception {
+        envVariables.put(JMS_TRADE_REF_NBR_PREFIX, prefix);
+        setEnv(envVariables);
     }
 
-    private void sendServerAndLocalMessages() {
-        for (int i = 0; i < NUMBER_OF_SERVER_MESSAGES; i++) {
+    private void sendServerMessages(int numberOfServerMessages) {
+        for (int i = 0; i < numberOfServerMessages; i++) {
             producerTemplate.sendBodyAndHeader(TOPIC, SERVER_PREFIX, MCP_SYSTEM_HEADER, SERVER_SYSTEM_HEADER);
         }
-        for (int i = 0; i < NUMBER_OF_LOCAL_MESSAGES; i++) {
+    }
+
+    private void sendLocalMessages(int numberOfLocalMessages) {
+        for (int i = 0; i < numberOfLocalMessages; i++) {
             producerTemplate.sendBodyAndHeader(TOPIC, LOCAL_PREFIX, MCP_SYSTEM_HEADER, LOCAL_SYSTEM_HEADER);
+        }
+    }
+
+    private void sendLocalMessagesSecondPart(int numberOfLocalMessages) {
+        for (int i = 0; i < numberOfLocalMessages; i++) {
+            producerTemplate.sendBodyAndHeader(TOPIC, LOCAL2_PREFIX, MCP_SYSTEM_HEADER, LOCAL2_SYSTEM_HEADER);
         }
     }
 }

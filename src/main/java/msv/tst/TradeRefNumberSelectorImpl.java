@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang.StringUtils.EMPTY;
 
-@Component
 @Slf4j
 public class TradeRefNumberSelectorImpl implements TradeRefNumberSelector {
 
@@ -19,7 +18,7 @@ public class TradeRefNumberSelectorImpl implements TradeRefNumberSelector {
     static final String JMS_TRADE_REF_NBR_PREFIX = "JMS_TRADE_REF_NBR_PREFIX";
 
     @Override
-    public String includeTradePrefix(boolean isFirstOption) {
+    public String developerSide(boolean isFirstOption) {
         String prefixValue = System.getenv(JMS_TRADE_REF_NBR_PREFIX);
         if (isNull(prefixValue)) {
             log.info("Environment variable JMS_TRADE_REF_NBR_PREFIX is not set, no JMSSelector generated");
@@ -38,7 +37,7 @@ public class TradeRefNumberSelectorImpl implements TradeRefNumberSelector {
     }
 
     @Override
-    public String excludeTradePrefix(boolean isFirstOption) {
+    public String serverSide(boolean isFirstOption) {
         String prefixValue = System.getenv(JMS_TRADE_REF_NBR_PREFIX);
         if (isNull(prefixValue)) {
             log.info("Environment variable JMS_TRADE_REF_NBR_PREFIX is not set, no JMSSelector generated");

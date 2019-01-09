@@ -2,7 +2,7 @@ package msv.tst;
 
 public interface TradeRefNumberSelector {
 
-    String includeTradePrefix(boolean isFirstOption);
+    String developerSide(boolean isFirstOption);
 
-    String excludeTradePrefix(boolean isFirstOption);
+    String serverSide(boolean isFirstOption);
 }
