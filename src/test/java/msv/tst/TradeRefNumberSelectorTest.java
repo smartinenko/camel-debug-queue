@@ -84,7 +84,7 @@ public class TradeRefNumberSelectorTest {
     }
 
     @Test
-    public void testLocalSideIncludeSingleTrade() throws Exception {
+    public void testLocalSideIncludeSingleTradePrefix() throws Exception {
         setEnvVariable(LOCAL_PREFIX);
         String developerSideSelector = tradeRefNumberSelector.developerSide(true);
         String uri = TOPIC + developerSideSelector;
@@ -105,7 +105,7 @@ public class TradeRefNumberSelectorTest {
     }
 
     @Test
-    public void testServerSideExcludeMultipleTrade() throws Exception {
+    public void testServerSideExcludeMultipleTradePrefix() throws Exception {
         setEnvVariable(LOCAL_PREFIX + PROPERTY_DEV_PREFIX_DELIMITER + LOCAL2_PREFIX);
         String serverSideSelector = tradeRefNumberSelector.serverSide(true);
         String uri = TOPIC + serverSideSelector;
@@ -127,7 +127,7 @@ public class TradeRefNumberSelectorTest {
     }
 
     @Test
-    public void testLocalSideIncludeMultipleTrade() throws Exception {
+    public void testLocalSideIncludeMultipleTradePrefix() throws Exception {
         setEnvVariable(LOCAL_PREFIX + PROPERTY_DEV_PREFIX_DELIMITER + LOCAL2_PREFIX);
         String developerSideSelector = tradeRefNumberSelector.developerSide(true);
         String uri = TOPIC + developerSideSelector;
