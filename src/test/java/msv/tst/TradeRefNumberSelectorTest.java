@@ -6,10 +6,7 @@ import org.apache.camel.Consumer;
 import org.apache.camel.Endpoint;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.spring.SpringCamelContext;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
@@ -17,9 +14,13 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
 import static msv.tst.TradeRefNumberSelectorImpl.*;
 import static msv.tst.util.TestUtils.removeEnvVariable;
 import static msv.tst.util.TestUtils.setEnv;
@@ -50,6 +51,10 @@ public class TradeRefNumberSelectorTest {
     public static void setUp() throws Exception {
         manager.start();
         camelContext = manager.getCamelContext();
+    }
+
+    @Before
+    public void init() {
         producerTemplate = camelContext.createProducerTemplate();
     }
 
@@ -70,15 +75,21 @@ public class TradeRefNumberSelectorTest {
         String uri = TOPIC + serverSideSelector;
         Endpoint serverSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger serverMessagesCount = new AtomicInteger(0);
+
+        CountDownLatch cd = new CountDownLatch(10);
         Consumer serverSideConsumer = serverSideEndpoint.createConsumer(exchange -> {
-            log.info("server_host = {}", exchange.getIn().getBody(String.class));
+            String body = exchange.getIn().getBody(String.class);
+            log.info("server_host = {}", body);
+            assertEquals(SERVER_PREFIX, body);
             serverMessagesCount.addAndGet(1);
+            cd.countDown();
         });
         serverSideConsumer.start();
-        sendServerMessages(10);
         sendLocalMessages(5);
-        Thread.sleep(200);
-        assertEquals(NUMBER_OF_SERVER_MESSAGES, serverMessagesCount.get());
+        sendServerMessages(10);
+
+        cd.await(1, TimeUnit.SECONDS);
+        assertEquals(10, serverMessagesCount.get());
 
         serverSideConsumer.stop();
     }
@@ -90,15 +101,20 @@ public class TradeRefNumberSelectorTest {
         String uri = TOPIC + developerSideSelector;
         Endpoint localSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger localMessagesCount = new AtomicInteger(0);
+
+        CountDownLatch cd = new CountDownLatch(10);
         Consumer localSideConsumer = localSideEndpoint.createConsumer(exchange -> {
-            log.info("local_host = {}", exchange.getIn().getBody(String.class));
+            String body = exchange.getIn().getBody(String.class);
+            log.info("local_host = {}", body);
+            assertEquals(LOCAL_PREFIX, body);
             localMessagesCount.addAndGet(1);
+            cd.countDown();
         });
         localSideConsumer.start();
 
         sendServerMessages(10);
         sendLocalMessages(5);
-        Thread.sleep(200);
+        cd.await(1, TimeUnit.SECONDS);
         assertEquals(NUMBER_OF_LOCAL_MESSAGES, localMessagesCount.get());
 
         localSideConsumer.stop();
@@ -111,19 +127,23 @@ public class TradeRefNumberSelectorTest {
         String uri = TOPIC + serverSideSelector;
         Endpoint serverSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger serverMessagesCount = new AtomicInteger(0);
+        CountDownLatch cd = new CountDownLatch(10);
         Consumer serverSideConsumer = serverSideEndpoint.createConsumer(exchange -> {
-            log.info("server_host = {}", exchange.getIn().getBody(String.class));
+            String body = exchange.getIn().getBody(String.class);
+            log.info("server_host = {}", body);
+            assertEquals(SERVER_PREFIX, body);
             serverMessagesCount.addAndGet(1);
+            cd.countDown();
         });
         serverSideConsumer.start();
 
-        sendServerMessages(10);
         sendLocalMessages(5);
+        sendServerMessages(10);
         sendLocalMessagesSecondPart(5);
-        Thread.sleep(200);
-        assertEquals(NUMBER_OF_SERVER_MESSAGES, serverMessagesCount.get());
+        cd.await(1, TimeUnit.SECONDS);
 
         serverSideConsumer.stop();
+        assertEquals(NUMBER_OF_SERVER_MESSAGES, serverMessagesCount.get());
     }
 
     @Test
@@ -133,16 +153,20 @@ public class TradeRefNumberSelectorTest {
         String uri = TOPIC + developerSideSelector;
         Endpoint localSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger localMessagesCount = new AtomicInteger(0);
+        CountDownLatch cd = new CountDownLatch(10);
         Consumer localSideConsumer = localSideEndpoint.createConsumer(exchange -> {
-            log.info("local_host = {}", exchange.getIn().getBody(String.class));
+            String body = exchange.getIn().getBody(String.class);
+            log.info("local_host = {}", body);
+            assertFalse(SERVER_PREFIX.equalsIgnoreCase(body));
             localMessagesCount.addAndGet(1);
+            cd.countDown();
         });
         localSideConsumer.start();
 
         sendServerMessages(10);
         sendLocalMessages(5);
         sendLocalMessagesSecondPart(5);
-        Thread.sleep(200);
+        cd.await(1, TimeUnit.SECONDS);
         assertEquals(NUMBER_OF_LOCAL_MESSAGES_MULTIPLE_CHECK, localMessagesCount.get());
 
         localSideConsumer.stop();
@@ -154,15 +178,17 @@ public class TradeRefNumberSelectorTest {
         String uri = TOPIC + serverSideSelector;
         Endpoint serverSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger serverMessagesCount = new AtomicInteger(0);
+        CountDownLatch cd = new CountDownLatch(15);
         Consumer serverSideConsumer = serverSideEndpoint.createConsumer(exchange -> {
             log.info("server_host = {}", exchange.getIn().getBody(String.class));
             serverMessagesCount.addAndGet(1);
+            cd.countDown();
         });
         serverSideConsumer.start();
 
-        sendServerMessages(10);
         sendLocalMessages(5);
-        Thread.sleep(200);
+        sendServerMessages(10);
+        cd.await(1, TimeUnit.SECONDS);
         assertEquals(NUMBER_OF_SERVER_MESSAGES + NUMBER_OF_LOCAL_MESSAGES, serverMessagesCount.get());
 
         serverSideConsumer.stop();
@@ -174,15 +200,17 @@ public class TradeRefNumberSelectorTest {
         String uri = TOPIC + developerSideSelector;
         Endpoint localSideEndpoint = camelContext.getEndpoint(uri);
         AtomicInteger localMessagesCount = new AtomicInteger(0);
+        CountDownLatch cd = new CountDownLatch(15);
         Consumer localSideConsumer = localSideEndpoint.createConsumer(exchange -> {
             log.info("local_host = {}", exchange.getIn().getBody(String.class));
             localMessagesCount.addAndGet(1);
+            cd.countDown();
         });
         localSideConsumer.start();
 
         sendServerMessages(10);
         sendLocalMessages(5);
-        Thread.sleep(200);
+        cd.await(1, TimeUnit.SECONDS);
         assertEquals(NUMBER_OF_SERVER_MESSAGES + NUMBER_OF_LOCAL_MESSAGES, localMessagesCount.get());
 
         localSideConsumer.stop();
